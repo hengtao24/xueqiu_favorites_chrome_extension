@@ -1,0 +1,91 @@
+#xq-ext-tabbar { margin-bottom: 12px; }
+#xq-ext-list { min-height: 200px; }
+
+.xq-ext-tabbar-inner {
+  display: flex;
+  align-items: center;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 0;
+}
+.xq-ext-tabs { display: flex; flex: 1; gap: 0; overflow-x: auto; }
+.xq-ext-tab {
+  padding: 8px 16px;
+  font-size: 14px;
+  color: #666;
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.2s;
+}
+.xq-ext-tab:hover { color: #1B7BF5; }
+.xq-ext-tab--active { color: #1B7BF5; border-bottom-color: #1B7BF5; font-weight: 600; }
+.xq-ext-tabbar-actions { display: flex; gap: 8px; padding: 0 4px 8px; flex-shrink: 0; }
+
+.xq-ext-card {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.xq-ext-card-title { font-size: 14px; font-weight: 600; color: #222; margin-bottom: 4px; }
+.xq-ext-card-meta { font-size: 12px; color: #999; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.xq-ext-tags { display: inline-flex; gap: 4px; }
+.xq-ext-tag { color: #1B7BF5; font-size: 11px; }
+.xq-ext-empty { text-align: center; color: #999; padding: 40px 0; font-size: 14px; }
+
+.xq-ext-bulk-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f0f6ff;
+  border: 1px solid #cce0ff;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+.xq-ext-bulk-label { font-weight: 600; color: #1B7BF5; }
+#xq-ext-selected-count { color: #666; flex: 1; }
+.xq-ext-checkbox { width: 16px; height: 16px; accent-color: #1B7BF5; flex-shrink: 0; cursor: pointer; }
+
+.xq-ext-editor-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.xq-ext-editor-modal {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  width: 320px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+.xq-ext-editor-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; color: #222; }
+.xq-ext-editor-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  background: #f7f7f7;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+.xq-ext-editor-name { flex: 1; font-size: 13px; color: #333; }
+.xq-ext-editor-footer { display: flex; gap: 8px; margin-top: 14px; }
+
+.xq-ext-btn-primary { background: #1B7BF5; color: #fff; border: none; border-radius: 5px; padding: 5px 14px; font-size: 13px; cursor: pointer; }
+.xq-ext-btn-outline { background: transparent; color: #1B7BF5; border: 1px solid #1B7BF5; border-radius: 5px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
+.xq-ext-btn-ghost { background: transparent; color: #999; border: none; font-size: 12px; cursor: pointer; padding: 5px 8px; }
+.xq-ext-btn-danger { background: transparent; color: #FF3B30; border: none; font-size: 12px; cursor: pointer; }
+.xq-ext-input { flex: 1; border: 1px solid #ddd; border-radius: 5px; padding: 6px 10px; font-size: 13px; outline: none; }
+.xq-ext-input:focus { border-color: #1B7BF5; }
