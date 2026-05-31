@@ -65,19 +65,27 @@ function mount() {
   }
 }
 
-async function fetchFavorites() {
+async function fetchFavorites(page = 1) {
   try {
-    const res = await fetch('/statuses/favorites.json?page=1&count=20&type=all', {
+    const res = await fetch(`/statuses/favorites.json?page=${page}&count=20`, {
       credentials: 'include',
     });
     const data = await res.json();
-    if (data.statuses) {
-      interceptor.addItems(data.statuses);
+    if (!data.statuses || data.statuses.length === 0) {
+      refresh('all');
+      return;
     }
-    if (interceptor.getCache().length === 0) {
+    interceptor.addItems(data.statuses);
+    // Auto-load next pages up to maxPage
+    const maxPage = data.maxPage || 1;
+    if (page < maxPage && page < 10) {
+      fetchFavorites(page + 1);
+    } else {
       refresh('all');
     }
-  } catch (_) {}
+  } catch (_) {
+    refresh('all');
+  }
 }
 
 async function refresh(activeGroupId) {
@@ -91,7 +99,10 @@ async function refresh(activeGroupId) {
     () => enterBulkMode(activeGroupId),
     () => openEditor(activeGroupId),
   );
-  renderer.render(statuses, assignments, activeGroupId);
+  renderer.render(statuses, assignments, activeGroupId, groups, async (statusId, groupId) => {
+    await storage.addAssignments([statusId], groupId);
+    refresh(activeGroupId);
+  });
 }
 
 function enterBulkMode(activeGroupId) {
