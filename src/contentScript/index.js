@@ -18,24 +18,66 @@ function isOnFavoritesPage() {
     window.location.hash.startsWith('#/favorites');
 }
 
-module.exports.__isOnFavoritesPage = isOnFavoritesPage;
-module.exports.__mount = mount;
+// Wait for a DOM element matching selector, retrying up to maxTries times
+function waitForElement(selector, callback, maxTries = 20, interval = 300) {
+  let tries = 0;
+  const timer = setInterval(() => {
+    const el = document.querySelector(selector);
+    if (el) {
+      clearInterval(timer);
+      callback(el);
+    } else if (++tries >= maxTries) {
+      clearInterval(timer);
+    }
+  }, interval);
+}
 
 function mount() {
-  const anchor = document.querySelector('.user__desc') ||
-    document.querySelector('.userpage-header');
+  if (document.getElementById('xq-ext-tabbar')) return; // already mounted
+
+  // Find the timeline/list container — try common xueqiu selectors
+  const listContainer =
+    document.querySelector('.timeline-container') ||
+    document.querySelector('[class*="UserTimeline"]') ||
+    document.querySelector('[class*="timeline__"]') ||
+    document.querySelector('.user-pane__timeline');
 
   const wrapper = document.createElement('div');
+  wrapper.id = 'xq-ext-wrapper';
   wrapper.innerHTML = `
     <div id="xq-ext-tabbar"></div>
     <div id="xq-ext-bulk-bar"></div>
     <div id="xq-ext-list"></div>`;
 
-  if (anchor && anchor.parentNode) {
-    anchor.parentNode.insertBefore(wrapper, anchor.nextSibling);
+  if (listContainer) {
+    listContainer.parentNode.insertBefore(wrapper, listContainer);
   } else {
-    document.body.appendChild(wrapper);
+    // Fallback: insert before the first status/post item
+    const firstPost =
+      document.querySelector('.timeline-item') ||
+      document.querySelector('[class*="status-item"]') ||
+      document.querySelector('[class*="StatusItem"]');
+    if (firstPost && firstPost.parentNode) {
+      firstPost.parentNode.insertBefore(wrapper, firstPost);
+    } else {
+      document.body.appendChild(wrapper);
+    }
   }
+}
+
+async function fetchFavorites() {
+  try {
+    const res = await fetch('/statuses/favorites.json?page=1&count=20&type=all', {
+      credentials: 'include',
+    });
+    const data = await res.json();
+    if (data.statuses) {
+      interceptor.addItems(data.statuses);
+    }
+    if (interceptor.getCache().length === 0) {
+      refresh('all');
+    }
+  } catch (_) {}
 }
 
 async function refresh(activeGroupId) {
@@ -88,9 +130,51 @@ function openEditor(activeGroupId) {
   });
 }
 
-if (isOnFavoritesPage()) {
-  mount();
-  interceptor.install();
-  interceptor.onData(() => refresh('all'));
-  refresh('all');
+function initOnFavoritesPage() {
+  if (!isOnFavoritesPage()) return;
+
+  // Wait for the page content to render, then mount
+  waitForElement(
+    '.timeline-container, [class*="UserTimeline"], [class*="timeline__"], .timeline-item, [class*="status-item"]',
+    () => {
+      mount();
+      interceptor.install();
+      interceptor.onData(() => refresh('all'));
+
+      if (interceptor.getCache().length === 0) {
+        // XHR already fired before we could intercept — re-fetch manually
+        fetchFavorites();
+      } else {
+        refresh('all');
+      }
+    },
+  );
 }
+
+// Only run on xueqiu.com
+if (window.location.href.includes('xueqiu.com')) {
+  // Install interceptor immediately so we catch any XHR before hash changes
+  interceptor.install();
+  interceptor.onData(() => {
+    if (document.getElementById('xq-ext-tabbar')) {
+      refresh('all');
+    }
+  });
+
+  // Handle initial load
+  initOnFavoritesPage();
+
+  // Handle SPA navigation (tab switching changes the hash)
+  window.addEventListener('hashchange', () => {
+    // Remove old UI when leaving favorites
+    if (!isOnFavoritesPage()) {
+      const wrapper = document.getElementById('xq-ext-wrapper');
+      if (wrapper) wrapper.remove();
+      return;
+    }
+    initOnFavoritesPage();
+  });
+}
+
+module.exports.__isOnFavoritesPage = isOnFavoritesPage;
+module.exports.__mount = mount;

@@ -33,5 +33,13 @@ function install() {
 function onData(fn) { _listeners.push(fn); }
 function getCache() { return [..._cache]; }
 function clearCache() { _cache = []; _listeners = []; }
+function addItems(items) {
+  const existingIds = new Set(_cache.map(s => s.id));
+  const fresh = items.filter(s => !existingIds.has(s.id));
+  if (fresh.length > 0) {
+    _cache = [..._cache, ...fresh];
+    _listeners.forEach(fn => fn([..._cache]));
+  }
+}
 
-module.exports = { install, onData, getCache, clearCache };
+module.exports = { install, onData, getCache, clearCache, addItems };
