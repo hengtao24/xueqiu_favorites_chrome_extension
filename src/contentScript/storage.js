@@ -59,4 +59,10 @@ async function removeAssignment(statusId, groupId) {
   await _save(data);
 }
 
-module.exports = { getGroups, saveGroup, deleteGroup, getAssignments, addAssignments, removeAssignment, getData: _load };
+async function saveAllGroups(groups) {
+  const data = await _load();
+  data.groups = groups;
+  await _save(data);
+}
+
+module.exports = { getGroups, saveGroup, saveAllGroups, deleteGroup, getAssignments, addAssignments, removeAssignment, getData: _load };

@@ -6,7 +6,7 @@
 beforeEach(() => {
   jest.resetModules();
   jest.mock('../src/contentScript/interceptor', () => ({ install: jest.fn(), onData: jest.fn(), getCache: jest.fn(() => []) }));
-  jest.mock('../src/contentScript/storage', () => ({ getGroups: jest.fn(async () => []), saveGroup: jest.fn(async () => {}), deleteGroup: jest.fn(async () => {}), addAssignments: jest.fn(async () => {}), getData: jest.fn(async () => ({ groups: [], assignments: {} })) }));
+  jest.mock('../src/contentScript/storage', () => ({ getGroups: jest.fn(async () => []), saveGroup: jest.fn(async () => {}), saveAllGroups: jest.fn(async () => {}), deleteGroup: jest.fn(async () => {}), addAssignments: jest.fn(async () => {}), removeAssignment: jest.fn(async () => {}), getData: jest.fn(async () => ({ groups: [], assignments: {} })) }));
   jest.mock('../src/contentScript/renderer', () => ({ render: jest.fn() }));
   jest.mock('../src/contentScript/components/GroupTabBar', () => ({ render: jest.fn() }));
   jest.mock('../src/contentScript/components/BulkManager', () => ({ activate: jest.fn(), deactivate: jest.fn() }));
@@ -29,7 +29,7 @@ test('mount 在 body 中注入 TabBar 和 List 容器', () => {
 test('isOnFavoritesPage 在非收藏页返回 false', () => {
   jest.resetModules();
   jest.mock('../src/contentScript/interceptor', () => ({ install: jest.fn(), onData: jest.fn(), getCache: jest.fn(() => []) }));
-  jest.mock('../src/contentScript/storage', () => ({ getData: jest.fn(async () => ({ groups: [], assignments: {} })), getGroups: jest.fn(async () => []), saveGroup: jest.fn(), deleteGroup: jest.fn(), addAssignments: jest.fn() }));
+  jest.mock('../src/contentScript/storage', () => ({ getData: jest.fn(async () => ({ groups: [], assignments: {} })), getGroups: jest.fn(async () => []), saveGroup: jest.fn(), saveAllGroups: jest.fn(), deleteGroup: jest.fn(), addAssignments: jest.fn(), removeAssignment: jest.fn() }));
   jest.mock('../src/contentScript/renderer', () => ({ render: jest.fn() }));
   jest.mock('../src/contentScript/components/GroupTabBar', () => ({ render: jest.fn() }));
   jest.mock('../src/contentScript/components/BulkManager', () => ({ activate: jest.fn(), deactivate: jest.fn() }));

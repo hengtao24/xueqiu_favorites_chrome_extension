@@ -119,9 +119,10 @@ function mount() {
 async function refresh(gid) {
   activeGroupId = gid != null ? gid : activeGroupId;
   const { groups, assignments } = await storage.getData();
+  const sortedGroups = [...groups].sort((a, b) => a.order - b.order);
 
   GroupTabBar.render(
-    groups,
+    sortedGroups,
     activeGroupId,
     newGid => refresh(newGid),
     () => enterBulkMode(),
@@ -197,6 +198,14 @@ function openEditor() {
         await storage.deleteGroup(groupId);
         GroupEditor.close();
         refresh(activeGroupId === groupId ? 'all' : activeGroupId);
+      },
+      async (groupId, newName) => {
+        await storage.saveGroup({ ...groups.find(g => g.id === groupId), name: newName });
+        refresh();
+      },
+      async orderedGroups => {
+        await storage.saveAllGroups(orderedGroups);
+        refresh();
       },
       () => GroupEditor.close(),
     );

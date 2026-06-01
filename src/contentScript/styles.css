@@ -90,8 +90,16 @@
   border-radius: 6px;
   margin-bottom: 6px;
 }
-.xq-ext-editor-name { flex: 1; font-size: 13px; color: #333; }
-.xq-ext-editor-footer { display: flex; gap: 8px; margin-top: 14px; }
+.xq-ext-editor-name { flex: 1; font-size: 13px; color: #333; cursor: default; }
+.xq-ext-editor-footer { display: flex; gap: 8px; margin-top: 10px; }
+.xq-ext-editor-error { font-size: 12px; color: #FF3B30; margin-top: 6px; display: none; }
+.xq-ext-drag-handle { color: #bbb; cursor: grab; font-size: 14px; padding-right: 6px; user-select: none; }
+.xq-ext-drag-handle:active { cursor: grabbing; }
+.xq-ext-dragging { opacity: 0.4; }
+.xq-ext-drag-over { border: 2px dashed #1B7BF5; background: #f0f6ff; }
+.xq-ext-btn-rename { background: none; border: none; cursor: pointer; font-size: 12px; padding: 0 4px; opacity: 0.5; }
+.xq-ext-btn-rename:hover { opacity: 1; }
+.xq-ext-rename-input { flex: 1; font-size: 13px; }
 
 .xq-ext-btn-primary { background: #1B7BF5; color: #fff; border: none; border-radius: 5px; padding: 5px 14px; font-size: 13px; cursor: pointer; }
 .xq-ext-btn-outline { background: transparent; color: #1B7BF5; border: 1px solid #1B7BF5; border-radius: 5px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
