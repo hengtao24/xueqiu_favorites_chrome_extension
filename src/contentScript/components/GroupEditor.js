@@ -60,23 +60,32 @@ function open(groups, onAdd, onDelete, onRename, onReorder, onClose) {
     input.focus();
     input.select();
 
+    let done = false;
+
     function commit() {
+      if (done) return;
       const newName = input.value.trim();
       if (!newName) { showError('分组名称不能为空'); input.focus(); return; }
       if (isDuplicate(newName, gid)) { showError(`"${newName}" 已存在`); input.focus(); return; }
+      done = true;
       showError('');
       currentGroups = currentGroups.map(g => g.id === gid ? { ...g, name: newName } : g);
       onRename(gid, newName);
       renderList();
     }
 
+    function cancel() {
+      if (done) return;
+      done = true;
+      renderList();
+    }
+
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); commit(); }
-      if (e.key === 'Escape') renderList();
+      if (e.key === 'Escape') cancel();
     });
-    input.addEventListener('blur', () => {
-      if (document.contains(input)) renderList();
-    });
+    // setTimeout lets the keydown handler run first before blur triggers cancel
+    input.addEventListener('blur', () => setTimeout(cancel, 0));
   }
 
   function bindEvents(list) {
