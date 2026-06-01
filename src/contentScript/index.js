@@ -35,12 +35,7 @@ function waitForElement(selector, callback, maxTries = 20, interval = 300) {
 function mount() {
   if (document.getElementById('xq-ext-tabbar')) return; // already mounted
 
-  // Find the timeline/list container — try common xueqiu selectors
-  const listContainer =
-    document.querySelector('.timeline-container') ||
-    document.querySelector('[class*="UserTimeline"]') ||
-    document.querySelector('[class*="timeline__"]') ||
-    document.querySelector('.user-pane__timeline');
+  const listContainer = document.querySelector('.profiles__timeline__bd');
 
   const wrapper = document.createElement('div');
   wrapper.id = 'xq-ext-wrapper';
@@ -52,16 +47,7 @@ function mount() {
   if (listContainer) {
     listContainer.parentNode.insertBefore(wrapper, listContainer);
   } else {
-    // Fallback: insert before the first status/post item
-    const firstPost =
-      document.querySelector('.timeline-item') ||
-      document.querySelector('[class*="status-item"]') ||
-      document.querySelector('[class*="StatusItem"]');
-    if (firstPost && firstPost.parentNode) {
-      firstPost.parentNode.insertBefore(wrapper, firstPost);
-    } else {
-      document.body.appendChild(wrapper);
-    }
+    document.body.appendChild(wrapper);
   }
 }
 
@@ -146,7 +132,7 @@ function initOnFavoritesPage() {
 
   // Wait for the page content to render, then mount
   waitForElement(
-    '.timeline-container, [class*="UserTimeline"], [class*="timeline__"], .timeline-item, [class*="status-item"]',
+    '.profiles__timeline__bd, article.timeline__item',
     () => {
       mount();
       interceptor.install();
