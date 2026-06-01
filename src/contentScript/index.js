@@ -143,8 +143,9 @@ function enterBulkMode() {
       <div class="xq-ext-bulk-toolbar">
         <span class="xq-ext-bulk-label">批量管理模式</span>
         <span id="xq-ext-selected-count">已选 0 条</span>
-        <select id="xq-ext-bulk-group-select">${options}</select>
-        <button id="xq-ext-bulk-confirm" class="xq-ext-btn-primary">确定</button>
+        <select id="xq-ext-bulk-group-select">${options || '<option value="" disabled>（暂无分组）</option>'}</select>
+        <button id="xq-ext-bulk-confirm" class="xq-ext-btn-primary"${!options ? ' disabled' : ''}>加入分组</button>
+        <button id="xq-ext-bulk-unfav" class="xq-ext-btn-danger-outline">取消收藏</button>
         <button id="xq-ext-bulk-exit" class="xq-ext-btn-ghost">退出</button>
       </div>`;
 
@@ -170,6 +171,22 @@ function enterBulkMode() {
         .map(cb => getStatusId(cb.closest('article.timeline__item')))
         .filter(Boolean);
       if (ids.length > 0) await storage.addAssignments(ids, groupId);
+      exitBulkMode();
+    });
+
+    document.getElementById('xq-ext-bulk-unfav')?.addEventListener('click', () => {
+      const selected = [...document.querySelectorAll('.xq-ext-article-checkbox:checked')]
+        .map(cb => cb.closest('article.timeline__item'))
+        .filter(Boolean);
+      if (selected.length === 0) return;
+      if (!confirm(`确定取消收藏选中的 ${selected.length} 条内容？`)) return;
+      selected.forEach(article => {
+        // Click xueqiu's native unfavorite button
+        const unfavBtn = [...article.querySelectorAll('.timeline__item__control')]
+          .find(el => el.querySelector('span')?.textContent.trim() === '取消收藏');
+        if (unfavBtn) unfavBtn.click();
+        article.style.display = 'none';
+      });
       exitBulkMode();
     });
 
