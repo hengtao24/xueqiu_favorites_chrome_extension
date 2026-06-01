@@ -53,39 +53,35 @@ function open(groups, onAdd, onDelete, onRename, onReorder, onClose) {
     const group = currentGroups.find(g => g.id === gid);
     if (!group) return;
 
-    const input = document.createElement('input');
-    input.className = 'xq-ext-input xq-ext-rename-input';
-    input.value = group.name;
-    nameEl.replaceWith(input);
+    // Replace name span with input + save/cancel buttons
+    const wrap = document.createElement('span');
+    wrap.className = 'xq-ext-rename-wrap';
+    wrap.innerHTML = `
+      <input class="xq-ext-input xq-ext-rename-input" value="${group.name}">
+      <button class="xq-ext-btn-save" data-save-gid="${gid}" title="保存">✓</button>
+      <button class="xq-ext-btn-cancel-rename" data-cancel-gid="${gid}" title="取消">✗</button>`;
+    nameEl.replaceWith(wrap);
+
+    const input = wrap.querySelector('.xq-ext-rename-input');
     input.focus();
     input.select();
 
-    let done = false;
-
     function commit() {
-      if (done) return;
       const newName = input.value.trim();
       if (!newName) { showError('分组名称不能为空'); input.focus(); return; }
       if (isDuplicate(newName, gid)) { showError(`"${newName}" 已存在`); input.focus(); return; }
-      done = true;
       showError('');
       currentGroups = currentGroups.map(g => g.id === gid ? { ...g, name: newName } : g);
       onRename(gid, newName);
       renderList();
     }
 
-    function cancel() {
-      if (done) return;
-      done = true;
-      renderList();
-    }
-
+    wrap.querySelector('[data-save-gid]').addEventListener('click', commit);
+    wrap.querySelector('[data-cancel-gid]').addEventListener('click', renderList);
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); commit(); }
-      if (e.key === 'Escape') cancel();
+      if (e.key === 'Escape') renderList();
     });
-    // setTimeout lets the keydown handler run first before blur triggers cancel
-    input.addEventListener('blur', () => setTimeout(cancel, 0));
   }
 
   function bindEvents(list) {

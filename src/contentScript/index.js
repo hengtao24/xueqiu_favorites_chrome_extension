@@ -231,7 +231,11 @@ function openEditor() {
         refresh(activeGroupId === groupId ? 'all' : activeGroupId);
       },
       async (groupId, newName) => {
-        await storage.saveGroup({ ...groups.find(g => g.id === groupId), name: newName });
+        // Read fresh from storage to avoid stale closure
+        const latest = await storage.getGroups();
+        const group = latest.find(g => g.id === groupId);
+        if (!group) return;
+        await storage.saveGroup({ ...group, name: newName });
         refresh();
       },
       async orderedGroups => {

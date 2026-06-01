@@ -58,6 +58,16 @@ test('点击重命名按钮显示输入框', () => {
   expect(input.value).toBe('A股');
 });
 
+test('点击 ✓ 按钮触发 onRename', () => {
+  const onRename = jest.fn();
+  GroupEditor.open(groups, noop, noop, onRename, noop, noop);
+  document.querySelector('[data-rename-gid="g1"]').click();
+  const input = document.querySelector('.xq-ext-rename-input');
+  input.value = 'A股改名';
+  document.querySelector('[data-save-gid="g1"]').click();
+  expect(onRename).toHaveBeenCalledWith('g1', 'A股改名');
+});
+
 test('重命名 Enter 触发 onRename', () => {
   const onRename = jest.fn();
   GroupEditor.open(groups, noop, noop, onRename, noop, noop);
