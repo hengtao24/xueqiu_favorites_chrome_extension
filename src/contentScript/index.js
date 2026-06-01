@@ -174,19 +174,33 @@ function enterBulkMode() {
       exitBulkMode();
     });
 
-    document.getElementById('xq-ext-bulk-unfav')?.addEventListener('click', () => {
+    document.getElementById('xq-ext-bulk-unfav')?.addEventListener('click', async () => {
       const selected = [...document.querySelectorAll('.xq-ext-article-checkbox:checked')]
         .map(cb => cb.closest('article.timeline__item'))
         .filter(Boolean);
       if (selected.length === 0) return;
       if (!confirm(`确定取消收藏选中的 ${selected.length} 条内容？`)) return;
+
+      const statusIds = selected.map(getStatusId).filter(Boolean);
+
+      // Click xueqiu's native unfavorite button for each article
       selected.forEach(article => {
-        // Click xueqiu's native unfavorite button
         const unfavBtn = [...article.querySelectorAll('.timeline__item__control')]
           .find(el => el.querySelector('span')?.textContent.trim() === '取消收藏');
         if (unfavBtn) unfavBtn.click();
-        article.style.display = 'none';
       });
+
+      // Clean up storage assignments for unfavorited items
+      const { assignments } = await storage.getData();
+      for (const sid of statusIds) {
+        const groups = assignments[sid] || [];
+        for (const gid of groups) {
+          await storage.removeAssignment(sid, gid);
+        }
+      }
+
+      // Remove articles from DOM then refresh
+      selected.forEach(article => article.remove());
       exitBulkMode();
     });
 
