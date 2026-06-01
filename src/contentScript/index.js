@@ -66,27 +66,12 @@ function addGroupSelector(article, groups, assignments) {
   }
 }
 
-// Update group tags on an article that already has a selector
-function updateGroupSelector(article, groups, assignments) {
-  const statusId = getStatusId(article);
-  if (!statusId) return;
-  const tagsEl = article.querySelector('.xq-ext-inline-tags');
-  if (!tagsEl) return;
-  const myGroups = assignments[statusId] || [];
-  tagsEl.innerHTML = myGroups.map(gid => {
-    const g = groups.find(x => x.id === gid);
-    return g ? `<span class="xq-ext-tag">${g.name}</span>` : '';
-  }).join('');
-}
 
 async function augmentArticles() {
   const { groups, assignments } = await storage.getData();
   document.querySelectorAll('article.timeline__item').forEach(article => {
-    if (article.querySelector('.xq-ext-group-selector')) {
-      updateGroupSelector(article, groups, assignments);
-    } else {
-      addGroupSelector(article, groups, assignments);
-    }
+    article.querySelector('.xq-ext-group-selector')?.remove();
+    addGroupSelector(article, groups, assignments);
   });
   filterArticles(activeGroupId, assignments);
 }
