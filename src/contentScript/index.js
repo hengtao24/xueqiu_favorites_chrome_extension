@@ -36,7 +36,7 @@ function addGroupSelector(article, groups, assignments) {
 
   const groupTags = myGroups.map(gid => {
     const g = groups.find(x => x.id === gid);
-    return g ? `<span class="xq-ext-tag">${g.name}</span>` : '';
+    return g ? `<span class="xq-ext-tag">${g.name}<button class="xq-ext-tag-remove" data-status-id="${statusId}" data-group-id="${gid}" title="从分组移除">×</button></span>` : '';
   }).join('');
 
   const options = groups.map(g =>
@@ -54,6 +54,17 @@ function addGroupSelector(article, groups, assignments) {
     </select>` : ''}`;
 
   ft.appendChild(wrap);
+
+  // Remove from group (× button on each tag)
+  wrap.querySelectorAll('.xq-ext-tag-remove').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const sid = btn.dataset.statusId;
+      const gid = btn.dataset.groupId;
+      await storage.removeAssignment(sid, gid);
+      await augmentArticles();
+    });
+  });
 
   if (groups.length > 0) {
     wrap.querySelector('.xq-ext-assign-select').addEventListener('change', async e => {

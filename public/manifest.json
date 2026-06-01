@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Xueqiu Extension",
+  "name": "雪球收藏分组",
   "version": "0.1.0",
-  "description": "My Chrome Extension",
+  "description": "为雪球收藏页添加自定义分组功能",
   "icons": {
     "16": "icons/icon_16.png",
     "32": "icons/icon_32.png",
@@ -13,8 +13,7 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Xueqiu Extension",
-    "default_popup": "popup.html"
+    "default_title": "雪球收藏分组"
   },
   "permissions": [
     "storage"

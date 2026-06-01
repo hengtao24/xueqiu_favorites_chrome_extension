@@ -37,7 +37,9 @@
 .xq-ext-card-body { flex: 1; }
 .xq-ext-card-footer { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 .xq-ext-tags { display: inline-flex; gap: 4px; flex-wrap: wrap; }
-.xq-ext-tag { background: #E8F1FE; color: #1B7BF5; font-size: 11px; border-radius: 10px; padding: 1px 8px; }
+.xq-ext-tag { background: #E8F1FE; color: #1B7BF5; font-size: 11px; border-radius: 10px; padding: 1px 6px; display: inline-flex; align-items: center; gap: 2px; }
+.xq-ext-tag-remove { background: none; border: none; color: #1B7BF5; font-size: 12px; cursor: pointer; padding: 0; line-height: 1; opacity: 0.6; }
+.xq-ext-tag-remove:hover { opacity: 1; color: #FF3B30; }
 .xq-ext-assign-wrap { margin-left: auto; }
 .xq-ext-assign-select { font-size: 11px; border: 1px solid #ddd; border-radius: 4px; padding: 2px 6px; color: #666; cursor: pointer; background: white; }
 .xq-ext-assign-select:focus { border-color: #1B7BF5; outline: none; }
