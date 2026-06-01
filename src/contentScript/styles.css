@@ -41,6 +41,9 @@
 .xq-ext-assign-wrap { margin-left: auto; }
 .xq-ext-assign-select { font-size: 11px; border: 1px solid #ddd; border-radius: 4px; padding: 2px 6px; color: #666; cursor: pointer; background: white; }
 .xq-ext-assign-select:focus { border-color: #1B7BF5; outline: none; }
+.xq-ext-group-selector { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; }
+.xq-ext-inline-tags { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.xq-ext-article-checkbox { position: absolute; left: -22px; top: 14px; width: 16px; height: 16px; accent-color: #1B7BF5; cursor: pointer; }
 .xq-ext-empty { text-align: center; color: #999; padding: 40px 0; font-size: 14px; }
 
 .xq-ext-bulk-toolbar {

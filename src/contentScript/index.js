@@ -2,12 +2,12 @@
 
 require('./styles.css');
 
-const interceptor = require('./interceptor');
 const storage = require('./storage');
-const renderer = require('./renderer');
 const GroupTabBar = require('./components/GroupTabBar');
-const BulkManager = require('./components/BulkManager');
 const GroupEditor = require('./components/GroupEditor');
+
+let activeGroupId = 'all';
+let scrollObserver = null;
 
 function generateId() {
   return Math.random().toString(36).slice(2, 9);
@@ -18,31 +18,100 @@ function isOnFavoritesPage() {
     window.location.hash.startsWith('#/favorites');
 }
 
-// Wait for a DOM element matching selector, retrying up to maxTries times
-function waitForElement(selector, callback, maxTries = 20, interval = 300) {
-  let tries = 0;
-  const timer = setInterval(() => {
-    const el = document.querySelector(selector);
-    if (el) {
-      clearInterval(timer);
-      callback(el);
-    } else if (++tries >= maxTries) {
-      clearInterval(timer);
+// Extract status id from an article element
+function getStatusId(article) {
+  return article.querySelector('a[data-id]')?.dataset?.id;
+}
+
+// Add group selector to a single article (idempotent)
+function addGroupSelector(article, groups, assignments) {
+  const statusId = getStatusId(article);
+  if (!statusId) return;
+  if (article.querySelector('.xq-ext-group-selector')) return;
+
+  const ft = article.querySelector('.timeline__item__ft');
+  if (!ft) return;
+
+  const myGroups = assignments[statusId] || [];
+
+  const groupTags = myGroups.map(gid => {
+    const g = groups.find(x => x.id === gid);
+    return g ? `<span class="xq-ext-tag">${g.name}</span>` : '';
+  }).join('');
+
+  const options = groups.map(g =>
+    `<option value="${g.id}">${g.name}</option>`
+  ).join('');
+
+  const wrap = document.createElement('span');
+  wrap.className = 'xq-ext-group-selector';
+  wrap.innerHTML = `
+    <span class="xq-ext-tags xq-ext-inline-tags">${groupTags}</span>
+    ${groups.length > 0 ? `
+    <select class="xq-ext-assign-select" data-status-id="${statusId}">
+      <option value="">+分组</option>
+      ${options}
+    </select>` : ''}`;
+
+  ft.appendChild(wrap);
+
+  if (groups.length > 0) {
+    wrap.querySelector('.xq-ext-assign-select').addEventListener('change', async e => {
+      const groupId = e.target.value;
+      if (!groupId) return;
+      e.target.value = '';
+      await storage.addAssignments([statusId], groupId);
+      await augmentArticles();
+    });
+  }
+}
+
+// Update group tags on an article that already has a selector
+function updateGroupSelector(article, groups, assignments) {
+  const statusId = getStatusId(article);
+  if (!statusId) return;
+  const tagsEl = article.querySelector('.xq-ext-inline-tags');
+  if (!tagsEl) return;
+  const myGroups = assignments[statusId] || [];
+  tagsEl.innerHTML = myGroups.map(gid => {
+    const g = groups.find(x => x.id === gid);
+    return g ? `<span class="xq-ext-tag">${g.name}</span>` : '';
+  }).join('');
+}
+
+async function augmentArticles() {
+  const { groups, assignments } = await storage.getData();
+  document.querySelectorAll('article.timeline__item').forEach(article => {
+    if (article.querySelector('.xq-ext-group-selector')) {
+      updateGroupSelector(article, groups, assignments);
+    } else {
+      addGroupSelector(article, groups, assignments);
     }
-  }, interval);
+  });
+  filterArticles(activeGroupId, assignments);
+}
+
+function filterArticles(gid, assignments) {
+  document.querySelectorAll('article.timeline__item').forEach(article => {
+    const statusId = getStatusId(article);
+    if (gid === 'all') {
+      article.style.display = '';
+    } else {
+      const myGroups = (statusId && assignments[statusId]) || [];
+      article.style.display = myGroups.includes(gid) ? '' : 'none';
+    }
+  });
 }
 
 function mount() {
-  if (document.getElementById('xq-ext-tabbar')) return; // already mounted
+  if (document.getElementById('xq-ext-tabbar')) return;
 
   const listContainer = document.querySelector('.profiles__timeline__bd');
-
   const wrapper = document.createElement('div');
   wrapper.id = 'xq-ext-wrapper';
   wrapper.innerHTML = `
     <div id="xq-ext-tabbar"></div>
-    <div id="xq-ext-bulk-bar"></div>
-    <div id="xq-ext-list"></div>`;
+    <div id="xq-ext-bulk-bar"></div>`;
 
   if (listContainer) {
     listContainer.parentNode.insertBefore(wrapper, listContainer);
@@ -51,71 +120,82 @@ function mount() {
   }
 }
 
-async function fetchFavorites(page = 1) {
-  try {
-    const res = await fetch(`/statuses/favorites.json?page=${page}&count=20`, {
-      credentials: 'include',
-    });
-    const data = await res.json();
-    if (!data.statuses || data.statuses.length === 0) {
-      refresh('all');
-      return;
-    }
-    interceptor.addItems(data.statuses);
-    // Auto-load next pages up to maxPage
-    const maxPage = data.maxPage || 1;
-    if (page < maxPage && page < 10) {
-      fetchFavorites(page + 1);
-    } else {
-      refresh('all');
-    }
-  } catch (_) {
-    refresh('all');
-  }
-}
-
-async function refresh(activeGroupId) {
-  const statuses = interceptor.getCache();
+async function refresh(gid) {
+  activeGroupId = gid != null ? gid : activeGroupId;
   const { groups, assignments } = await storage.getData();
 
   GroupTabBar.render(
     groups,
     activeGroupId,
-    gid => refresh(gid),
-    () => enterBulkMode(activeGroupId),
-    () => openEditor(activeGroupId),
+    newGid => refresh(newGid),
+    () => enterBulkMode(),
+    () => openEditor(),
   );
-  renderer.render(statuses, assignments, activeGroupId, groups, async (statusId, groupId) => {
-    await storage.addAssignments([statusId], groupId);
-    refresh(activeGroupId);
-  });
+
+  filterArticles(activeGroupId, assignments);
+  await augmentArticles();
 }
 
-function enterBulkMode(activeGroupId) {
+function enterBulkMode() {
+  const bar = document.getElementById('xq-ext-bulk-bar');
+  if (!bar) return;
+
   storage.getGroups().then(groups => {
-    BulkManager.activate(
-      groups,
-      async (statusIds, groupId) => {
-        await storage.addAssignments(statusIds, groupId);
-        BulkManager.deactivate();
-        refresh(activeGroupId);
-      },
-      () => {
-        BulkManager.deactivate();
-        refresh(activeGroupId);
-      },
-    );
+    const options = groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+    bar.innerHTML = `
+      <div class="xq-ext-bulk-toolbar">
+        <span class="xq-ext-bulk-label">批量管理模式</span>
+        <span id="xq-ext-selected-count">已选 0 条</span>
+        <select id="xq-ext-bulk-group-select">${options}</select>
+        <button id="xq-ext-bulk-confirm" class="xq-ext-btn-primary">确定</button>
+        <button id="xq-ext-bulk-exit" class="xq-ext-btn-ghost">退出</button>
+      </div>`;
+
+    document.querySelectorAll('article.timeline__item').forEach(article => {
+      if (article.style.display === 'none') return;
+      if (article.querySelector('.xq-ext-checkbox')) return;
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'xq-ext-checkbox xq-ext-article-checkbox';
+      article.style.position = 'relative';
+      article.prepend(cb);
+      cb.addEventListener('change', () => {
+        const n = document.querySelectorAll('.xq-ext-article-checkbox:checked').length;
+        const el = document.getElementById('xq-ext-selected-count');
+        if (el) el.textContent = `已选 ${n} 条`;
+      });
+    });
+
+    document.getElementById('xq-ext-bulk-confirm')?.addEventListener('click', async () => {
+      const groupId = document.getElementById('xq-ext-bulk-group-select')?.value;
+      if (!groupId) return;
+      const ids = [...document.querySelectorAll('.xq-ext-article-checkbox:checked')]
+        .map(cb => getStatusId(cb.closest('article.timeline__item')))
+        .filter(Boolean);
+      if (ids.length > 0) await storage.addAssignments(ids, groupId);
+      exitBulkMode();
+    });
+
+    document.getElementById('xq-ext-bulk-exit')?.addEventListener('click', exitBulkMode);
   });
 }
 
-function openEditor(activeGroupId) {
+function exitBulkMode() {
+  const bar = document.getElementById('xq-ext-bulk-bar');
+  if (bar) bar.innerHTML = '';
+  document.querySelectorAll('.xq-ext-article-checkbox').forEach(cb => cb.remove());
+  document.querySelectorAll('article.timeline__item').forEach(a => a.style.position = '');
+  refresh();
+}
+
+function openEditor() {
   storage.getGroups().then(groups => {
     GroupEditor.open(
       groups,
       async name => {
         await storage.saveGroup({ id: generateId(), name, order: groups.length });
         GroupEditor.close();
-        refresh(activeGroupId);
+        refresh();
       },
       async groupId => {
         await storage.deleteGroup(groupId);
@@ -127,49 +207,45 @@ function openEditor(activeGroupId) {
   });
 }
 
-function initOnFavoritesPage() {
-  if (!isOnFavoritesPage()) return;
-
-  // Wait for the page content to render, then mount
-  waitForElement(
-    '.profiles__timeline__bd, article.timeline__item',
-    () => {
-      mount();
-      interceptor.install();
-      interceptor.onData(() => refresh('all'));
-
-      if (interceptor.getCache().length === 0) {
-        // XHR already fired before we could intercept — re-fetch manually
-        fetchFavorites();
-      } else {
-        refresh('all');
-      }
-    },
-  );
+// Watch for new articles loaded by infinite scroll
+function startObserver() {
+  if (scrollObserver) scrollObserver.disconnect();
+  const container = document.querySelector('.profiles__timeline__bd');
+  if (!container) return;
+  scrollObserver = new MutationObserver(() => augmentArticles());
+  scrollObserver.observe(container, { childList: true, subtree: false });
 }
 
-// Only run on xueqiu.com
-if (window.location.href.includes('xueqiu.com')) {
-  // Install interceptor immediately so we catch any XHR before hash changes
-  interceptor.install();
-  interceptor.onData(() => {
-    if (document.getElementById('xq-ext-tabbar')) {
+function waitAndInit() {
+  let tries = 0;
+  const timer = setInterval(() => {
+    const ready = document.querySelector('.profiles__timeline__bd') &&
+      document.querySelector('article.timeline__item');
+    if (ready) {
+      clearInterval(timer);
+      mount();
       refresh('all');
+      startObserver();
+    } else if (++tries > 30) {
+      clearInterval(timer);
     }
-  });
+  }, 300);
+}
 
-  // Handle initial load
-  initOnFavoritesPage();
+function teardown() {
+  if (scrollObserver) { scrollObserver.disconnect(); scrollObserver = null; }
+  document.getElementById('xq-ext-wrapper')?.remove();
+  document.querySelectorAll('.xq-ext-group-selector').forEach(el => el.remove());
+  document.querySelectorAll('.xq-ext-article-checkbox').forEach(cb => cb.remove());
+  activeGroupId = 'all';
+}
 
-  // Handle SPA navigation (tab switching changes the hash)
+if (window.location.href.includes('xueqiu.com')) {
+  if (isOnFavoritesPage()) waitAndInit();
+
   window.addEventListener('hashchange', () => {
-    // Remove old UI when leaving favorites
-    if (!isOnFavoritesPage()) {
-      const wrapper = document.getElementById('xq-ext-wrapper');
-      if (wrapper) wrapper.remove();
-      return;
-    }
-    initOnFavoritesPage();
+    teardown();
+    if (isOnFavoritesPage()) waitAndInit();
   });
 }
 

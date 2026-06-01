@@ -23,7 +23,7 @@ test('mount 在 body 中注入 TabBar 和 List 容器', () => {
   const { __mount } = require('../src/contentScript/index');
   __mount();
   expect(document.getElementById('xq-ext-tabbar')).not.toBeNull();
-  expect(document.getElementById('xq-ext-list')).not.toBeNull();
+  expect(document.getElementById('xq-ext-bulk-bar')).not.toBeNull();
 });
 
 test('isOnFavoritesPage 在非收藏页返回 false', () => {
