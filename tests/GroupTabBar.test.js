@@ -53,6 +53,57 @@ test('点击「自动分组」触发 onAutoGroup 回调', () => {
   expect(onAutoGroup).toHaveBeenCalled();
 });
 
+describe('scrollActiveTabIntoView', () => {
+  function setup({ tabsRect, activeRect, scrollLeft }) {
+    document.body.innerHTML = `
+      <div class="xq-ext-tabs">
+        <span class="xq-ext-tab xq-ext-tab--active">x</span>
+      </div>`;
+    const tabsEl = document.querySelector('.xq-ext-tabs');
+    const activeEl = document.querySelector('.xq-ext-tab--active');
+    tabsEl.getBoundingClientRect = () => tabsRect;
+    activeEl.getBoundingClientRect = () => activeRect;
+    tabsEl.scrollLeft = scrollLeft;
+    return tabsEl;
+  }
+
+  test('激活 Tab 在右侧不可见时向右滚动', () => {
+    const tabs = setup({
+      tabsRect: { left: 0, right: 100, top: 0, bottom: 30, width: 100, height: 30 },
+      activeRect: { left: 150, right: 200, top: 0, bottom: 30, width: 50, height: 30 },
+      scrollLeft: 0,
+    });
+    GroupTabBar.scrollActiveTabIntoView(tabs);
+    expect(tabs.scrollLeft).toBeGreaterThan(0);
+  });
+
+  test('激活 Tab 在左侧不可见时向左滚动', () => {
+    const tabs = setup({
+      tabsRect: { left: 100, right: 300, top: 0, bottom: 30, width: 200, height: 30 },
+      activeRect: { left: 20, right: 80, top: 0, bottom: 30, width: 60, height: 30 },
+      scrollLeft: 500,
+    });
+    GroupTabBar.scrollActiveTabIntoView(tabs);
+    expect(tabs.scrollLeft).toBeLessThan(500);
+  });
+
+  test('激活 Tab 已在可视范围内时 scrollLeft 不变', () => {
+    const tabs = setup({
+      tabsRect: { left: 0, right: 300, top: 0, bottom: 30, width: 300, height: 30 },
+      activeRect: { left: 50, right: 150, top: 0, bottom: 30, width: 100, height: 30 },
+      scrollLeft: 42,
+    });
+    GroupTabBar.scrollActiveTabIntoView(tabs);
+    expect(tabs.scrollLeft).toBe(42);
+  });
+
+  test('容器内没有激活 Tab 时不抛错', () => {
+    document.body.innerHTML = '<div class="xq-ext-tabs"></div>';
+    const tabs = document.querySelector('.xq-ext-tabs');
+    expect(() => GroupTabBar.scrollActiveTabIntoView(tabs)).not.toThrow();
+  });
+});
+
 function rightClick(el) {
   el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }));
 }

@@ -1,5 +1,21 @@
 'use strict';
 
+// Horizontally scroll the tabs container so its currently-active tab is visible.
+// Only adjusts when the active tab is clipped; never scrolls the page itself.
+function scrollActiveTabIntoView(tabsEl) {
+  if (!tabsEl) return;
+  const active = tabsEl.querySelector('.xq-ext-tab--active');
+  if (!active) return;
+  const tabsRect = tabsEl.getBoundingClientRect();
+  const activeRect = active.getBoundingClientRect();
+  const pad = 8;
+  if (activeRect.right > tabsRect.right) {
+    tabsEl.scrollLeft += activeRect.right - tabsRect.right + pad;
+  } else if (activeRect.left < tabsRect.left) {
+    tabsEl.scrollLeft -= tabsRect.left - activeRect.left + pad;
+  }
+}
+
 function closeContextMenu() {
   document.getElementById('xq-ext-tab-ctxmenu')?.remove();
   // Always detach listeners so a stale closer can't kill a freshly-opened menu.
@@ -78,6 +94,10 @@ function render(groups, activeGroupId, onSwitch, onBulk, onNewGroup, onRename, o
   document.getElementById('xq-ext-new-group-btn').addEventListener('click', onNewGroup);
   const autoBtn = document.getElementById('xq-ext-auto-btn');
   if (autoBtn && onAutoGroup) autoBtn.addEventListener('click', onAutoGroup);
+
+  // Bring the active tab into view after re-render so users don't have to
+  // scroll the tab bar manually after clicking an off-screen tab.
+  scrollActiveTabIntoView(container.querySelector('.xq-ext-tabs'));
 }
 
-module.exports = { render };
+module.exports = { render, scrollActiveTabIntoView };
