@@ -112,11 +112,11 @@ src/
 
 **布局：**
 - 左侧：「全部」Tab + 各自定义分组 Tab（横向排列，可横向滚动）
-- 右侧：「✏️ 批量管理」按钮 + 「+ 新建分组」按钮
+- 右侧：「✏️ 批量管理」按钮 + 「管理分组」按钮
 
 **交互：**
 - 点击 Tab → 切换当前分组视图，筛选 article 显示
-- 点击「+ 新建分组」→ 打开 GroupEditor 弹窗
+- 点击「管理分组」→ 打开 GroupEditor 弹窗（新建/重命名/删除/排序）
 
 ### 5.2 每条收藏内联分组选择器
 
@@ -138,11 +138,11 @@ src/
 
 ### 5.4 GroupEditor（分组管理弹窗）
 
-点击「+ 新建分组」触发，点击遮罩或「关闭」退出。
+点击「管理分组」触发，点击遮罩或「关闭」退出。
 
 **功能：**
-- 显示现有分组列表，每项可「删除」
-- 底部输入框新建分组，点击「添加」确认
+- 显示现有分组列表，每项可「重命名」「删除」，支持拖拽排序
+- 底部输入框新建分组，点击「添加」确认（含分组名重复校验）
 
 ---
 
@@ -173,12 +173,31 @@ src/
 
 ## 8. 未实现项（后续可迭代）
 
-- 右键 Tab 弹出重命名/删除菜单（当前通过 GroupEditor 弹窗管理）
-- 分组拖拽排序（当前按创建顺序）
-- 分组名重复校验
-- 存储达到上限（5MB）时提示
-- 跨设备同步（可升级为 `chrome.storage.sync`）
 - 自动规则分组（按股票代码、关键词等）
+
+> 已实现（原列于本节，现已完成）：分组拖拽排序、分组重命名、分组名重复校验、右键 Tab 重命名/删除菜单、存储配额提示、跨设备同步（`chrome.storage.sync`）。
+
+### 8.1 右键 Tab 菜单
+
+右键点击自定义分组 Tab（「全部」除外）弹出上下文菜单：
+- 「重命名」→ `window.prompt` 输入新名称，含重复名校验（重名时 toast 提示）
+- 「删除」→ `window.confirm` 确认后删除分组及其 assignments 引用
+
+菜单点击空白处 / 再次右键自动关闭（`GroupTabBar.js`）。
+
+### 8.2 存储配额提示
+
+- `storage.getUsage()` 返回 `{ bytes, quota, ratio }`：`bytes` 由 `TextEncoder` 估算 `key + JSON` 的 UTF-8 字节数；`quota` 视当前存储区域而定（local 5MB / sync 100KB）。
+- 所有写操作经 `index.js` 的 `safeWrite()` 封装：写入 reject（配额超限，`chrome.runtime.lastError`）时弹出红色 toast；写入成功后若 `ratio ≥ 90%` 弹出橙色预警 toast。
+- 「管理分组」弹窗底部展示当前用量文字（`已用 X KB / Y KB（Z%）`）。
+
+### 8.3 跨设备同步
+
+- 同步开关存于 `chrome.storage.local` 的 `xq_sync_enabled`（偏好本身始终留在本地）；分组数据 key 仍为 `xq_groups_data`，按开关存于 `chrome.storage.sync` 或 `chrome.storage.local`。
+- `setSyncEnabled()` 切换时把当前区域数据迁移到目标区域。
+- 「管理分组」弹窗内提供同步开关（`GroupEditor.js` 的 `syncState`）。
+- `index.js` 注册 `chrome.storage.onChanged` 监听：当 `xq_groups_data` 在任一区域变化（如其他设备同步过来）且当前处于收藏页时自动 `refresh()`。
+- 注意：`chrome.storage.sync` 单 key 上限约 8KB、总量约 100KB，收藏量大时建议关闭同步使用本地存储。
 
 ---
 

@@ -1,9 +1,20 @@
 'use strict';
 
 // onAdd(name), onDelete(groupId), onRename(groupId, newName), onReorder(orderedGroups), onClose
-function open(groups, onAdd, onDelete, onRename, onReorder, onClose) {
+// syncState (optional): { enabled: boolean, onToggle: (enabled) => void, usageText?: string }
+function open(groups, onAdd, onDelete, onRename, onReorder, onClose, syncState) {
   const overlay = document.createElement('div');
   overlay.className = 'xq-ext-editor-overlay';
+
+  const syncSection = syncState ? `
+    <div class="xq-ext-sync-section">
+      <label class="xq-ext-sync-row">
+        <input type="checkbox" id="xq-ext-sync-toggle" ${syncState.enabled ? 'checked' : ''}>
+        <span class="xq-ext-sync-label">跨设备同步（chrome.storage.sync）</span>
+      </label>
+      <div class="xq-ext-sync-hint">${syncState.usageText || ''}</div>
+    </div>` : '';
+
   overlay.innerHTML = `
     <div class="xq-ext-editor-modal">
       <div class="xq-ext-editor-title">管理分组</div>
@@ -13,8 +24,14 @@ function open(groups, onAdd, onDelete, onRename, onReorder, onClose) {
         <input id="xq-ext-new-group-input" class="xq-ext-input" placeholder="新分组名称">
         <button id="xq-ext-add-group-btn" class="xq-ext-btn-primary">添加</button>
       </div>
+      ${syncSection}
     </div>`;
   document.body.appendChild(overlay);
+
+  if (syncState) {
+    const toggle = document.getElementById('xq-ext-sync-toggle');
+    toggle.addEventListener('change', () => syncState.onToggle(toggle.checked));
+  }
 
   let currentGroups = [...groups];
 

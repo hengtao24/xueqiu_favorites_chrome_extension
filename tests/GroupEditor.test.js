@@ -101,3 +101,29 @@ test('close 移除弹窗 DOM', () => {
   GroupEditor.close();
   expect(document.querySelector('.xq-ext-editor-overlay')).toBeNull();
 });
+
+test('提供 syncState 时渲染同步开关', () => {
+  GroupEditor.open(groups, noop, noop, noop, noop, noop, { enabled: false, onToggle: noop });
+  const toggle = document.getElementById('xq-ext-sync-toggle');
+  expect(toggle).not.toBeNull();
+  expect(toggle.checked).toBe(false);
+});
+
+test('syncState.enabled 为 true 时开关默认勾选', () => {
+  GroupEditor.open(groups, noop, noop, noop, noop, noop, { enabled: true, onToggle: noop });
+  expect(document.getElementById('xq-ext-sync-toggle').checked).toBe(true);
+});
+
+test('切换同步开关触发 onToggle', () => {
+  const onToggle = jest.fn();
+  GroupEditor.open(groups, noop, noop, noop, noop, noop, { enabled: false, onToggle });
+  const toggle = document.getElementById('xq-ext-sync-toggle');
+  toggle.checked = true;
+  toggle.dispatchEvent(new Event('change'));
+  expect(onToggle).toHaveBeenCalledWith(true);
+});
+
+test('未提供 syncState 时不渲染同步开关', () => {
+  GroupEditor.open(groups, noop, noop, noop, noop, noop);
+  expect(document.getElementById('xq-ext-sync-toggle')).toBeNull();
+});

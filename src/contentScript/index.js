@@ -8,9 +8,49 @@ const GroupEditor = require('./components/GroupEditor');
 
 let activeGroupId = 'all';
 let scrollObserver = null;
+let observedListContainer = null;
+let watchdogTimer = null;
 
 function generateId() {
   return Math.random().toString(36).slice(2, 9);
+}
+
+const QUOTA_WARN_RATIO = 0.9;
+
+function showToast(msg, type = 'info') {
+  let toast = document.getElementById('xq-ext-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'xq-ext-toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.className = `xq-ext-toast xq-ext-toast--${type} xq-ext-toast--show`;
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(() => {
+    toast.className = 'xq-ext-toast';
+  }, 3500);
+}
+
+async function checkQuotaWarning() {
+  try {
+    const { ratio } = await storage.getUsage();
+    if (ratio >= QUOTA_WARN_RATIO) {
+      showToast(`存储空间即将用尽（已使用 ${Math.round(ratio * 100)}%），请清理部分分组`, 'warn');
+    }
+  } catch (_) { /* ignore */ }
+}
+
+// Wrap a storage write: surfaces quota-exceeded errors and warns near the limit.
+async function safeWrite(fn) {
+  try {
+    await fn();
+  } catch (_) {
+    showToast('保存失败：存储空间已满，请清理后重试', 'error');
+    return false;
+  }
+  await checkQuotaWarning();
+  return true;
 }
 
 function isOnFavoritesPage() {
@@ -61,7 +101,7 @@ function addGroupSelector(article, groups, assignments) {
       e.stopPropagation();
       const sid = btn.dataset.statusId;
       const gid = btn.dataset.groupId;
-      await storage.removeAssignment(sid, gid);
+      await safeWrite(() => storage.removeAssignment(sid, gid));
       await augmentArticles();
     });
   });
@@ -71,7 +111,7 @@ function addGroupSelector(article, groups, assignments) {
       const groupId = e.target.value;
       if (!groupId) return;
       e.target.value = '';
-      await storage.addAssignments([statusId], groupId);
+      await safeWrite(() => storage.addAssignments([statusId], groupId));
       await augmentArticles();
     });
   }
@@ -127,10 +167,29 @@ async function refresh(gid) {
     newGid => refresh(newGid),
     () => enterBulkMode(),
     () => openEditor(),
+    (gid, newName) => renameGroup(gid, newName),
+    gid => deleteGroupTab(gid),
   );
 
   filterArticles(activeGroupId, assignments);
   await augmentArticles();
+}
+
+async function renameGroup(gid, newName) {
+  const latest = await storage.getGroups();
+  const group = latest.find(g => g.id === gid);
+  if (!group) return;
+  if (latest.some(g => g.name === newName && g.id !== gid)) {
+    showToast(`分组「${newName}」已存在`, 'error');
+    return;
+  }
+  const ok = await safeWrite(() => storage.saveGroup({ ...group, name: newName }));
+  if (ok) refresh();
+}
+
+async function deleteGroupTab(gid) {
+  const ok = await safeWrite(() => storage.deleteGroup(gid));
+  if (ok) refresh(activeGroupId === gid ? 'all' : activeGroupId);
 }
 
 function enterBulkMode() {
@@ -170,7 +229,7 @@ function enterBulkMode() {
       const ids = [...document.querySelectorAll('.xq-ext-article-checkbox:checked')]
         .map(cb => getStatusId(cb.closest('article.timeline__item')))
         .filter(Boolean);
-      if (ids.length > 0) await storage.addAssignments(ids, groupId);
+      if (ids.length > 0) await safeWrite(() => storage.addAssignments(ids, groupId));
       exitBulkMode();
     });
 
@@ -216,35 +275,53 @@ function exitBulkMode() {
   refresh();
 }
 
-function openEditor() {
-  storage.getGroups().then(groups => {
-    GroupEditor.open(
-      groups,
-      async name => {
-        await storage.saveGroup({ id: generateId(), name, order: groups.length });
-        GroupEditor.close();
-        refresh();
+async function openEditor() {
+  const groups = await storage.getGroups();
+  const [syncEnabled, usage] = await Promise.all([
+    storage.isSyncEnabled(),
+    storage.getUsage().catch(() => null),
+  ]);
+
+  const usageText = usage
+    ? `已用 ${(usage.bytes / 1024).toFixed(1)}KB / ${(usage.quota / 1024).toFixed(0)}KB（${Math.round(usage.ratio * 100)}%）`
+    : '';
+
+  GroupEditor.open(
+    groups,
+    async name => {
+      const ok = await safeWrite(() => storage.saveGroup({ id: generateId(), name, order: groups.length }));
+      if (ok) { GroupEditor.close(); refresh(); }
+    },
+    async groupId => {
+      const ok = await safeWrite(() => storage.deleteGroup(groupId));
+      if (ok) { GroupEditor.close(); refresh(activeGroupId === groupId ? 'all' : activeGroupId); }
+    },
+    async (groupId, newName) => {
+      // Read fresh from storage to avoid stale closure
+      const latest = await storage.getGroups();
+      const group = latest.find(g => g.id === groupId);
+      if (!group) return;
+      const ok = await safeWrite(() => storage.saveGroup({ ...group, name: newName }));
+      if (ok) refresh();
+    },
+    async orderedGroups => {
+      const ok = await safeWrite(() => storage.saveAllGroups(orderedGroups));
+      if (ok) refresh();
+    },
+    () => GroupEditor.close(),
+    {
+      enabled: syncEnabled,
+      usageText,
+      onToggle: async enabled => {
+        const ok = await safeWrite(() => storage.setSyncEnabled(enabled));
+        if (ok) {
+          showToast(enabled ? '已开启跨设备同步' : '已关闭跨设备同步，数据保存在本设备', 'info');
+          GroupEditor.close();
+          refresh();
+        }
       },
-      async groupId => {
-        await storage.deleteGroup(groupId);
-        GroupEditor.close();
-        refresh(activeGroupId === groupId ? 'all' : activeGroupId);
-      },
-      async (groupId, newName) => {
-        // Read fresh from storage to avoid stale closure
-        const latest = await storage.getGroups();
-        const group = latest.find(g => g.id === groupId);
-        if (!group) return;
-        await storage.saveGroup({ ...group, name: newName });
-        refresh();
-      },
-      async orderedGroups => {
-        await storage.saveAllGroups(orderedGroups);
-        refresh();
-      },
-      () => GroupEditor.close(),
-    );
-  });
+    },
+  );
 }
 
 // Watch for new articles loaded by infinite scroll
@@ -252,8 +329,49 @@ function startObserver() {
   if (scrollObserver) scrollObserver.disconnect();
   const container = document.querySelector('.profiles__timeline__bd');
   if (!container) return;
+  observedListContainer = container;
   scrollObserver = new MutationObserver(() => augmentArticles());
   scrollObserver.observe(container, { childList: true, subtree: false });
+}
+
+// Detect when xueqiu's SPA re-renders away our injected UI or replaces the
+// timeline node, and self-heal by re-mounting / re-binding. Without this, the
+// buttons lose their handlers after an idle re-render and clicks do nothing.
+function startWatchdog() {
+  if (watchdogTimer) return;
+  watchdogTimer = setInterval(() => {
+    if (extensionContextInvalidated()) return;
+    if (!isOnFavoritesPage()) return;
+
+    const container = document.querySelector('.profiles__timeline__bd');
+    if (!container) return;
+
+    const tabbar = document.getElementById('xq-ext-tabbar');
+    if (!tabbar || !document.body.contains(tabbar)) {
+      // Our UI was removed by a re-render — rebuild it.
+      mount();
+      refresh();
+      startObserver();
+      return;
+    }
+    if (container !== observedListContainer) {
+      // Timeline container was swapped — re-attach observer to the new node.
+      startObserver();
+      augmentArticles();
+    }
+  }, 1500);
+}
+
+// Returns true once the extension was reloaded/updated under a long-lived tab,
+// at which point chrome.* calls throw "Extension context invalidated".
+let contextInvalidWarned = false;
+function extensionContextInvalidated() {
+  const invalid = !(chrome && chrome.runtime && chrome.runtime.id);
+  if (invalid && !contextInvalidWarned) {
+    contextInvalidWarned = true;
+    try { showToast('扩展已更新，请刷新本页面以恢复分组功能', 'warn'); } catch (_) { /* ignore */ }
+  }
+  return invalid;
 }
 
 function waitAndInit() {
@@ -274,13 +392,31 @@ function waitAndInit() {
 
 function teardown() {
   if (scrollObserver) { scrollObserver.disconnect(); scrollObserver = null; }
+  observedListContainer = null;
   document.getElementById('xq-ext-wrapper')?.remove();
+  document.getElementById('xq-ext-toast')?.remove();
+  document.getElementById('xq-ext-tab-ctxmenu')?.remove();
   document.querySelectorAll('.xq-ext-group-selector').forEach(el => el.remove());
   document.querySelectorAll('.xq-ext-article-checkbox').forEach(cb => cb.remove());
   activeGroupId = 'all';
 }
 
+// Refresh the UI when group data changes elsewhere (e.g. another synced device).
+let storageListenerAttached = false;
+function startStorageListener() {
+  if (storageListenerAttached) return;
+  if (!(chrome.storage && chrome.storage.onChanged)) return;
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if ((area === 'sync' || area === 'local') && changes[storage.DATA_KEY]) {
+      if (isOnFavoritesPage() && document.getElementById('xq-ext-tabbar')) refresh();
+    }
+  });
+  storageListenerAttached = true;
+}
+
 if (window.location.href.includes('xueqiu.com')) {
+  startStorageListener();
+  startWatchdog();
   if (isOnFavoritesPage()) waitAndInit();
 
   window.addEventListener('hashchange', () => {

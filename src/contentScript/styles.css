@@ -112,3 +112,49 @@
 .xq-ext-btn-danger-outline:hover { background: #FF3B30; color: #fff; }
 .xq-ext-input { flex: 1; border: 1px solid #ddd; border-radius: 5px; padding: 6px 10px; font-size: 13px; outline: none; }
 .xq-ext-input:focus { border-color: #1B7BF5; }
+
+/* === Tab 右键菜单 === */
+.xq-ext-ctxmenu {
+  position: fixed;
+  z-index: 1000000;
+  min-width: 96px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.16);
+  padding: 4px;
+  font-size: 13px;
+}
+.xq-ext-ctxmenu-item { padding: 7px 12px; border-radius: 5px; cursor: pointer; color: #333; }
+.xq-ext-ctxmenu-item:hover { background: #f0f6ff; color: #1B7BF5; }
+.xq-ext-ctxmenu-danger:hover { background: #fff0ef; color: #FF3B30; }
+
+/* === 跨设备同步开关 === */
+.xq-ext-sync-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid #f0f0f0; }
+.xq-ext-sync-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.xq-ext-sync-row input { width: 15px; height: 15px; accent-color: #1B7BF5; cursor: pointer; }
+.xq-ext-sync-label { font-size: 13px; color: #333; }
+.xq-ext-sync-hint { font-size: 11px; color: #999; margin-top: 6px; padding-left: 23px; }
+
+/* === Toast 提示 === */
+.xq-ext-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%) translateY(20px);
+  z-index: 1000001;
+  max-width: 80vw;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #fff;
+  background: #333;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+}
+.xq-ext-toast--show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.xq-ext-toast--warn { background: #E89A1C; }
+.xq-ext-toast--error { background: #FF3B30; }
+.xq-ext-toast--info { background: #1B7BF5; }
