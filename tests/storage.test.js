@@ -100,3 +100,32 @@ test('setSyncEnabled(false) 切回 local 并迁移数据', async () => {
   expect(groups).toHaveLength(1);
   expect(chrome.storage.local._store['xq_groups_data'].groups).toHaveLength(1);
 });
+
+test('getRules 初始返回空数组', async () => {
+  expect(await storage.getRules()).toEqual([]);
+});
+
+test('saveRule 新增并更新规则', async () => {
+  await storage.saveRule({ id: 'r1', groupId: 'g1', enabled: true, logic: 'any', conditions: [] });
+  expect(await storage.getRules()).toHaveLength(1);
+  await storage.saveRule({ id: 'r1', groupId: 'g1', enabled: false, logic: 'any', conditions: [] });
+  const rules = await storage.getRules();
+  expect(rules).toHaveLength(1);
+  expect(rules[0].enabled).toBe(false);
+});
+
+test('deleteRule 删除指定规则', async () => {
+  await storage.saveRule({ id: 'r1', groupId: 'g1', enabled: true, logic: 'any', conditions: [] });
+  await storage.deleteRule('r1');
+  expect(await storage.getRules()).toHaveLength(0);
+});
+
+test('deleteGroup 连带删除其规则', async () => {
+  await storage.saveGroup({ id: 'g1', name: 'A', order: 0 });
+  await storage.saveRule({ id: 'r1', groupId: 'g1', enabled: true, logic: 'any', conditions: [] });
+  await storage.saveRule({ id: 'r2', groupId: 'g2', enabled: true, logic: 'any', conditions: [] });
+  await storage.deleteGroup('g1');
+  const rules = await storage.getRules();
+  expect(rules).toHaveLength(1);
+  expect(rules[0].id).toBe('r2');
+});

@@ -28,7 +28,9 @@ async function _load() {
   const area = await _area();
   return new Promise(resolve => {
     area.get(KEY, result => {
-      resolve(result[KEY] || { groups: [], assignments: {} });
+      const data = result[KEY] || { groups: [], assignments: {}, rules: [] };
+      if (!data.rules) data.rules = [];
+      resolve(data);
     });
   });
 }
@@ -84,6 +86,26 @@ async function deleteGroup(groupId) {
     data.assignments[sid] = data.assignments[sid].filter(id => id !== groupId);
     if (data.assignments[sid].length === 0) delete data.assignments[sid];
   }
+  data.rules = (data.rules || []).filter(r => r.groupId !== groupId);
+  await _save(data);
+}
+
+async function getRules() {
+  return (await _load()).rules || [];
+}
+
+async function saveRule(rule) {
+  const data = await _load();
+  if (!data.rules) data.rules = [];
+  const idx = data.rules.findIndex(r => r.id === rule.id);
+  if (idx >= 0) data.rules[idx] = rule;
+  else data.rules.push(rule);
+  await _save(data);
+}
+
+async function deleteRule(ruleId) {
+  const data = await _load();
+  data.rules = (data.rules || []).filter(r => r.id !== ruleId);
   await _save(data);
 }
 
@@ -122,6 +144,9 @@ module.exports = {
   getAssignments,
   addAssignments,
   removeAssignment,
+  getRules,
+  saveRule,
+  deleteRule,
   getData: _load,
   getUsage,
   getQuota,

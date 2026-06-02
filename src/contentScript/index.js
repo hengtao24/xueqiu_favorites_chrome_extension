@@ -3,13 +3,20 @@
 require('./styles.css');
 
 const storage = require('./storage');
+const extractor = require('./extractor');
+const ruleEngine = require('./ruleEngine');
 const GroupTabBar = require('./components/GroupTabBar');
 const GroupEditor = require('./components/GroupEditor');
+const RuleManager = require('./components/RuleManager');
 
 let activeGroupId = 'all';
 let scrollObserver = null;
 let observedListContainer = null;
 let watchdogTimer = null;
+
+// Auto-matched group memberships the user hid via the "×" on an auto tag.
+// Key: "statusId:groupId". Session-only — cleared on page reload (decision 5).
+const sessionHidden = new Set();
 
 function generateId() {
   return Math.random().toString(36).slice(2, 9);
@@ -63,21 +70,41 @@ function getStatusId(article) {
   return article.querySelector('a[data-id]')?.dataset?.id;
 }
 
-// Add group selector to a single article (idempotent)
-function addGroupSelector(article, groups, assignments) {
+// Compute an article's group membership: manual ∪ auto − sessionHidden (decision 5).
+function membershipFor(article, assignments, rules) {
   const statusId = getStatusId(article);
+  const manualGids = (statusId && assignments[statusId]) || [];
+  let autoGids = [];
+  try {
+    autoGids = ruleEngine.evaluate(extractor.extract(article), rules || []);
+  } catch (_) { /* extraction failed — fall back to manual only */ }
+  const autoOnly = autoGids.filter(g => !manualGids.includes(g));
+  const finalGids = [...new Set([...manualGids, ...autoGids])]
+    .filter(g => !sessionHidden.has(`${statusId}:${g}`));
+  return { statusId, manualGids, autoOnly, finalGids };
+}
+
+// Add group selector to a single article (idempotent)
+function addGroupSelector(article, groups, assignments, rules) {
+  const { statusId, manualGids, autoOnly, finalGids } = membershipFor(article, assignments, rules);
+  if (statusId) article.dataset.xqFinalGroups = finalGids.join(',');
   if (!statusId) return;
   if (article.querySelector('.xq-ext-group-selector')) return;
 
   const ft = article.querySelector('.timeline__item__ft');
   if (!ft) return;
 
-  const myGroups = assignments[statusId] || [];
-
-  const groupTags = myGroups.map(gid => {
+  const manualTags = manualGids.map(gid => {
     const g = groups.find(x => x.id === gid);
     return g ? `<span class="xq-ext-tag">${g.name}<button class="xq-ext-tag-remove" data-status-id="${statusId}" data-group-id="${gid}" title="从分组移除">×</button></span>` : '';
   }).join('');
+
+  const autoTags = autoOnly
+    .filter(gid => !sessionHidden.has(`${statusId}:${gid}`))
+    .map(gid => {
+      const g = groups.find(x => x.id === gid);
+      return g ? `<span class="xq-ext-tag xq-ext-tag--auto">${g.name}<span class="xq-ext-tag-auto-badge">自动</span><button class="xq-ext-tag-hide" data-status-id="${statusId}" data-group-id="${gid}" title="本次隐藏">×</button></span>` : '';
+    }).join('');
 
   const options = groups.map(g =>
     `<option value="${g.id}">${g.name}</option>`
@@ -86,7 +113,7 @@ function addGroupSelector(article, groups, assignments) {
   const wrap = document.createElement('span');
   wrap.className = 'xq-ext-group-selector';
   wrap.innerHTML = `
-    <span class="xq-ext-tags xq-ext-inline-tags">${groupTags}</span>
+    <span class="xq-ext-tags xq-ext-inline-tags">${manualTags}${autoTags}</span>
     ${groups.length > 0 ? `
     <select class="xq-ext-assign-select" data-status-id="${statusId}">
       <option value="">+分组</option>
@@ -95,13 +122,20 @@ function addGroupSelector(article, groups, assignments) {
 
   ft.appendChild(wrap);
 
-  // Remove from group (× button on each tag)
+  // Remove from group (× on a manual tag)
   wrap.querySelectorAll('.xq-ext-tag-remove').forEach(btn => {
     btn.addEventListener('click', async e => {
       e.stopPropagation();
-      const sid = btn.dataset.statusId;
-      const gid = btn.dataset.groupId;
-      await safeWrite(() => storage.removeAssignment(sid, gid));
+      await safeWrite(() => storage.removeAssignment(btn.dataset.statusId, btn.dataset.groupId));
+      await augmentArticles();
+    });
+  });
+
+  // Hide an auto-matched tag for this session only (× on an auto tag)
+  wrap.querySelectorAll('.xq-ext-tag-hide').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      sessionHidden.add(`${btn.dataset.statusId}:${btn.dataset.groupId}`);
       await augmentArticles();
     });
   });
@@ -119,23 +153,22 @@ function addGroupSelector(article, groups, assignments) {
 
 
 async function augmentArticles() {
-  const { groups, assignments } = await storage.getData();
+  const { groups, assignments, rules } = await storage.getData();
   document.querySelectorAll('article.timeline__item').forEach(article => {
     article.querySelector('.xq-ext-group-selector')?.remove();
-    addGroupSelector(article, groups, assignments);
+    addGroupSelector(article, groups, assignments, rules);
   });
-  filterArticles(activeGroupId, assignments);
+  filterArticles(activeGroupId);
 }
 
-function filterArticles(gid, assignments) {
+function filterArticles(gid) {
   document.querySelectorAll('article.timeline__item').forEach(article => {
-    const statusId = getStatusId(article);
     if (gid === 'all') {
       article.style.display = '';
-    } else {
-      const myGroups = (statusId && assignments[statusId]) || [];
-      article.style.display = myGroups.includes(gid) ? '' : 'none';
+      return;
     }
+    const finals = (article.dataset.xqFinalGroups || '').split(',').filter(Boolean);
+    article.style.display = finals.includes(gid) ? '' : 'none';
   });
 }
 
@@ -158,7 +191,7 @@ function mount() {
 
 async function refresh(gid) {
   activeGroupId = gid != null ? gid : activeGroupId;
-  const { groups, assignments } = await storage.getData();
+  const { groups } = await storage.getData();
   const sortedGroups = [...groups].sort((a, b) => a.order - b.order);
 
   GroupTabBar.render(
@@ -169,9 +202,9 @@ async function refresh(gid) {
     () => openEditor(),
     (gid, newName) => renameGroup(gid, newName),
     gid => deleteGroupTab(gid),
+    () => openRuleManager(),
   );
 
-  filterArticles(activeGroupId, assignments);
   await augmentArticles();
 }
 
@@ -324,6 +357,27 @@ async function openEditor() {
   );
 }
 
+function openRuleManager() {
+  Promise.all([storage.getGroups(), storage.getRules()]).then(([groups, rules]) => {
+    if (groups.length === 0) {
+      showToast('请先在「管理分组」创建分组，再设置自动规则', 'info');
+      return;
+    }
+    RuleManager.open(groups, rules, {
+      onSave: async rule => {
+        if (!rule.id) rule.id = generateId();
+        const ok = await safeWrite(() => storage.saveRule(rule));
+        if (ok) refresh();
+      },
+      onDelete: async ruleId => {
+        const ok = await safeWrite(() => storage.deleteRule(ruleId));
+        if (ok) refresh();
+      },
+      onClose: () => RuleManager.close(),
+    });
+  });
+}
+
 // Watch for new articles loaded by infinite scroll
 function startObserver() {
   if (scrollObserver) scrollObserver.disconnect();
@@ -396,6 +450,7 @@ function teardown() {
   document.getElementById('xq-ext-wrapper')?.remove();
   document.getElementById('xq-ext-toast')?.remove();
   document.getElementById('xq-ext-tab-ctxmenu')?.remove();
+  document.querySelector('.xq-ext-rule-overlay')?.remove();
   document.querySelectorAll('.xq-ext-group-selector').forEach(el => el.remove());
   document.querySelectorAll('.xq-ext-article-checkbox').forEach(cb => cb.remove());
   activeGroupId = 'all';

@@ -46,6 +46,13 @@ test('点击「管理分组」触发 onNewGroup 回调', () => {
   expect(onNewGroup).toHaveBeenCalled();
 });
 
+test('点击「自动分组」触发 onAutoGroup 回调', () => {
+  const onAutoGroup = jest.fn();
+  GroupTabBar.render(groups, 'all', jest.fn(), jest.fn(), jest.fn(), jest.fn(), jest.fn(), onAutoGroup);
+  document.getElementById('xq-ext-auto-btn').click();
+  expect(onAutoGroup).toHaveBeenCalled();
+});
+
 function rightClick(el) {
   el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }));
 }

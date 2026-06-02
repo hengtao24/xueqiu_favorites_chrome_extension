@@ -158,3 +158,73 @@
 .xq-ext-toast--warn { background: #E89A1C; }
 .xq-ext-toast--error { background: #FF3B30; }
 .xq-ext-toast--info { background: #1B7BF5; }
+
+/* === 自动命中标签 === */
+.xq-ext-tag--auto {
+  background: transparent;
+  border: 1px dashed #1B7BF5;
+  color: #1B7BF5;
+}
+.xq-ext-tag-auto-badge {
+  font-size: 9px;
+  background: #1B7BF5;
+  color: #fff;
+  border-radius: 6px;
+  padding: 0 4px;
+  margin-left: 3px;
+  line-height: 1.4;
+}
+.xq-ext-tag-hide { background: none; border: none; color: #1B7BF5; font-size: 12px; cursor: pointer; padding: 0; line-height: 1; opacity: 0.6; margin-left: 2px; }
+.xq-ext-tag-hide:hover { opacity: 1; color: #FF3B30; }
+
+/* === 自动分组规则面板 === */
+.xq-ext-rule-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.xq-ext-rule-modal {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  width: 380px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+.xq-ext-rule-list { margin-bottom: 12px; }
+.xq-ext-rule-empty { text-align: center; color: #999; font-size: 13px; padding: 24px 0; }
+.xq-ext-rule-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #f7f7f7;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+.xq-ext-rule-enable-wrap { display: flex; align-items: center; }
+.xq-ext-rule-enable { width: 15px; height: 15px; accent-color: #1B7BF5; cursor: pointer; }
+.xq-ext-rule-info { flex: 1; min-width: 0; }
+.xq-ext-rule-group { font-size: 13px; font-weight: 600; color: #1B7BF5; }
+.xq-ext-rule-summary { font-size: 12px; color: #666; margin-top: 2px; word-break: break-all; }
+.xq-ext-rule-edit-box {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #e0ecff;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+.xq-ext-rule-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.xq-ext-rule-label { font-size: 13px; color: #333; width: 56px; flex-shrink: 0; }
+.xq-ext-rule-row select { flex: 1; border: 1px solid #ddd; border-radius: 5px; padding: 5px 8px; font-size: 13px; }
+.xq-ext-rule-cond { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.xq-ext-rule-cond-type { border: 1px solid #ddd; border-radius: 5px; padding: 5px 6px; font-size: 12px; flex-shrink: 0; }
+.xq-ext-rule-cond-value { flex: 1; }
+.xq-ext-rule-cond-del { font-size: 15px; line-height: 1; padding: 0 4px; }
+.xq-ext-rule-edit-actions { display: flex; gap: 8px; margin-top: 10px; }
+#xq-ext-rule-add-cond { margin: 2px 0 4px; }

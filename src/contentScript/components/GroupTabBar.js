@@ -43,7 +43,7 @@ function showContextMenu(e, gid, currentName, onRename, onDelete) {
   }, 0);
 }
 
-function render(groups, activeGroupId, onSwitch, onBulk, onNewGroup, onRename, onDelete) {
+function render(groups, activeGroupId, onSwitch, onBulk, onNewGroup, onRename, onDelete, onAutoGroup) {
   const container = document.getElementById('xq-ext-tabbar');
   if (!container) return;
 
@@ -59,6 +59,7 @@ function render(groups, activeGroupId, onSwitch, onBulk, onNewGroup, onRename, o
     <div class="xq-ext-tabbar-inner">
       <div class="xq-ext-tabs">${tabs}</div>
       <div class="xq-ext-tabbar-actions">
+        <button id="xq-ext-auto-btn" class="xq-ext-btn-ghost">⚡ 自动分组</button>
         <button id="xq-ext-bulk-btn" class="xq-ext-btn-outline">✏️ 批量管理</button>
         <button id="xq-ext-new-group-btn" class="xq-ext-btn-ghost">管理分组</button>
       </div>
@@ -75,6 +76,8 @@ function render(groups, activeGroupId, onSwitch, onBulk, onNewGroup, onRename, o
   });
   document.getElementById('xq-ext-bulk-btn').addEventListener('click', onBulk);
   document.getElementById('xq-ext-new-group-btn').addEventListener('click', onNewGroup);
+  const autoBtn = document.getElementById('xq-ext-auto-btn');
+  if (autoBtn && onAutoGroup) autoBtn.addEventListener('click', onAutoGroup);
 }
 
 module.exports = { render };
